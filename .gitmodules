@@ -18,4 +18,4 @@
 	url = https://github.com/cdlewis/snowboardkids2-recomp-syms.git
 [submodule "lib/RecompFrontend"]
 	path = lib/RecompFrontend
-	url = https://github.com/cdlewis/RecompFrontend
+	url = https://github.com/navjack/RecompFrontend.git

@@ -76,3 +76,6 @@ gamecontrollerdb.txt
 patches/audio_jp
 patches/audio_us
 patches/audio_eu
+
+# --- macOS port: build artifacts, ROMs and local machine state ---
+*.app/

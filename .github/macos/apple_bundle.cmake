@@ -63,6 +63,17 @@ if(NOT EXISTS ${ENTITLEMENTS_FILE})
     message(FATAL_ERROR "Entitlements file not found at ${ENTITLEMENTS_FILE}")
 endif()
 
+# Locate the SDL3 dylib that sdl2-compat dlopen()s at runtime.
+execute_process(COMMAND brew --prefix sdl3 OUTPUT_VARIABLE SDL3_BREW_PREFIX
+                OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+find_file(SDL3_SOURCE_DYLIB
+    NAMES libSDL3.0.dylib libSDL3.dylib
+    PATHS "${SDL3_BREW_PREFIX}/lib" /opt/homebrew/opt/sdl3/lib /usr/local/opt/sdl3/lib
+    NO_DEFAULT_PATH)
+if(NOT SDL3_SOURCE_DYLIB)
+    message(FATAL_ERROR "libSDL3 not found; sdl2-compat needs it at runtime (brew install sdl3)")
+endif()
+
 # Post-build steps for macOS bundle
 add_custom_command(TARGET SnowboardKids2Recompiled POST_BUILD
     # Copy and fix frameworks first
@@ -86,6 +97,13 @@ add_custom_command(TARGET SnowboardKids2Recompiled POST_BUILD
 
     # Set RPATH
     COMMAND install_name_tool -add_rpath "@executable_path/../Frameworks/" $<TARGET_BUNDLE_DIR:SnowboardKids2Recompiled>/Contents/MacOS/SnowboardKids2Recompiled
+
+    # Vendor SDL3. fixup_bundle only follows link-time dependencies, but sdl2-compat
+    # dlopen()s libSDL3.dylib by name at load time, so nothing copies it and the bundled
+    # libSDL2 aborts in dllinit with "Failed loading SDL3 library" before main() runs.
+    # It searches @loader_path first, so it sits beside libSDL2 in Frameworks.
+    COMMAND ${CMAKE_COMMAND} -E copy ${SDL3_SOURCE_DYLIB} $<TARGET_BUNDLE_DIR:SnowboardKids2Recompiled>/Contents/Frameworks/libSDL3.dylib
+    COMMAND install_name_tool -id @loader_path/libSDL3.dylib $<TARGET_BUNDLE_DIR:SnowboardKids2Recompiled>/Contents/Frameworks/libSDL3.dylib
 
     # Sign the bundle
     COMMAND codesign --verbose=4 --options=runtime --no-strict --sign - --entitlements ${ENTITLEMENTS_FILE} --deep --force $<TARGET_BUNDLE_DIR:SnowboardKids2Recompiled>
